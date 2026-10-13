@@ -41,8 +41,8 @@ jobs:
         run: |
           for f in docs/schema.sql docs/security.md docs/architecture.md; do
             size=$(wc -c < "$f")
-            if [ "$size" -lt 300 ]; then
-              echo "FAIL: $f слишком маленький ($size байт, нужно >= 300)"
+            if [ "$size" -lt $f ]; then
+              echo "FAIL: $f слишком маленький ($size байт, нужно >= $f)"
               exit 1
             fi
             echo "PASS: $f размер $size байт"
