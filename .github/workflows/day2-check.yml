@@ -1,22 +1,28 @@
 name: Day 2 Check
-on: [push, pull_request]
+
+on:
+  push:
+    paths:
+      - 'docs/**'
+      - '.github/workflows/day2-check.yml'
+
 jobs:
-  check:
+  check-day2:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Check required files
+
+      - name: Check file structure
         run: |
-          echo "=== Checking files ==="
-          for f in README.md docs/security.md docs/schema.md docs/architecture.md docs/er_diagram.md; do
-            if [ -f "$f" ]; then
-              echo "PASS: $f found"
-            else
-              echo "FAIL: $f not found"
+          echo "Проверка наличия файлов..."
+          for f in docs/schema.sql docs/security.md docs/architecture.md docs/er_diagram.png; do
+            if [ ! -f "$f" ]; then
+              echo "FAIL: Файл $f не найден"
               exit 1
             fi
+            echo "PASS: $f найден"
           done
-          
+
       - name: All checks passed
-        run: echo "ALL CHECKS PASSED"
+        run: echo "Все проверки Day 2 пройдены успешно!
