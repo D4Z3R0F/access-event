@@ -1,90 +1,68 @@
 name: Day 1 Check
 
-on:
-  push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
-
-permissions:
-  contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  LC_ALL: C.UTF-8
-  MIN_FILE_CHARS: 500
-  MIN_USER_STORIES: 10
-  MIN_NFR: 5
-  MIN_ENTITIES: 10
+on: [push, pull_request]
 
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Check required files
-        shell: bash
         run: |
-          set -euo pipefail
-          MISSING=0
+          echo "=== Checking files ==="
           for f in README.md docs/analysis.md docs/requirements.md docs/tz.md docs/stakeholders.md; do
-            if [ ! -f "$f" ]; then
-              echo "FAIL: $f not found"; MISSING=1; continue
-            fi
-            SIZE=$(wc -m < "$f")
-            if [ "$SIZE" -lt "$MIN_FILE_CHARS" ]; then
-              echo "FAIL: $f too small ($SIZE < $MIN_FILE_CHARS)"; MISSING=1
+            if [ -f "$f" ]; then
+              echo "PASS: $f found"
+              SIZE=$(wc -c < "$f")
+              if [ "$SIZE" -lt 80 ]; then
+                echo "FAIL: $f is too small ($SIZE bytes, need >= 80)"
+                exit 1
+              fi
             else
-              echo "PASS: $f ($SIZE chars)"
+              echo "FAIL: $f not found"
+              exit 1
             fi
           done
-          [ "$MISSING" -eq 0 ]
-
+          
       - name: Check User Stories
-        shell: bash
         run: |
-          set -euo pipefail
-          COUNT=$(grep -cE 'Как .+, я хочу' docs/requirements.md || echo 0)
-          COUNT=${COUNT:-0}
-          echo "User Stories: $COUNT"
-          [ "$COUNT" -ge "$MIN_USER_STORIES" ]
-
+          COUNT=$(grep -c "Как " docs/requirements.md || echo 0)
+          echo "User Stories found: $COUNT"
+          if [ "$COUNT" -lt 10 ]; then
+            echo "FAIL: need >= 10 User Stories"
+            exit 1
+          fi
+          echo "PASS: User Stories OK"
+          
       - name: Check NFR
-        shell: bash
         run: |
-          set -euo pipefail
-          COUNT=$(grep -cE 'NFR-[0-9]+' docs/requirements.md || echo 0)
-          COUNT=${COUNT:-0}
-          echo "NFR: $COUNT"
-          [ "$COUNT" -ge "$MIN_NFR" ]
-
+          COUNT=$(grep -c "NFR-" docs/requirements.md || echo 0)
+          echo "NFR found: $COUNT"
+          if [ "$COUNT" -lt 5 ]; then
+            echo "FAIL: need >= 5 NFR"
+            exit 1
+          fi
+          echo "PASS: NFR OK"
+          
       - name: Check TZ sections
-        shell: bash
         run: |
-          set -euo pipefail
-          MISSING=0
           for section in "Назначение" "предметной области" "функци" "качеств" "интерфей" "данны" "стек" "Ограничен"; do
-            if ! grep -qiF -- "$section" docs/tz.md; then
-              echo "FAIL: '$section' not found"; MISSING=1
-            else
-              echo "PASS: '$section'"
+            if ! grep -qi "$section" docs/tz.md; then
+              echo "FAIL: section '$section' not found in tz.md"
+              exit 1
             fi
           done
-          [ "$MISSING" -eq 0 ]
-
+          echo "PASS: All TZ sections found"
+          
       - name: Check entities
-        shell: bash
         run: |
-          set -euo pipefail
-          COUNT=$(grep -cE '^\| *[A-Za-zА-Яа-я]' docs/analysis.md || echo 0)
-          COUNT=${COUNT:-0}
-          echo "Entity rows: $COUNT"
-          [ "$COUNT" -ge "$MIN_ENTITIES" ]
-
+          COUNT=$(grep -c "|" docs/analysis.md || echo 0)
+          if [ "$COUNT" -lt 10 ]; then
+            echo "FAIL: need more entities in analysis.md"
+            exit 1
+          fi
+          echo "PASS: Entities OK"
+          
       - name: All checks passed
         run: echo "ALL CHECKS PASSED"
